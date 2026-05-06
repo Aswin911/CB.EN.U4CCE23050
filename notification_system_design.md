@@ -116,4 +116,24 @@ npx ts-node --skip-project --transpile-only src/stage1.ts
 
 Output screenshot is in `screenshots/stage1_output.png`, shows all
 10 ranked notifications with their scores.
+
+## Stage 2
+
+### Overview
+
+Stage 2 involved building a full frontend application to display the notifications. The requirements were to use Next.js, Material UI, and integrate the priority logic built in Stage 1. The goal was to provide a clean and uncluttered user experience where students can quickly identify important notifications.
+
+### Implementation Details
+
+1. **Tech Stack**: Used React, Next.js (App Router), and Material UI (MUI). No external CSS libraries like Tailwind were used, sticking to MUI components and custom styling.
+2. **State Management**: Local component state along with `localStorage` was used to track which notifications the user has already viewed.
+3. **Filtering & Pagination**: The main "All Notifications" page supports pagination (10 per page) and filtering by category (All, Placement, Result, Event).
+4. **Priority Inbox**: A dedicated route (`/priority`) applies the priority logic from Stage 1 to rank notifications and display the top N items.
+5. **Logging integration**: Integrated the `logging_middleware` custom logger into the frontend. I made sure to replace console logs entirely and send meaningful logs on user interactions, page loads, and API calls.
+
+### User Interface Decisions
+
+- **New vs Viewed**: New notifications are distinguished visually using a 'NEW' badge and a solid border. Viewed notifications are muted down with reduced opacity and a greyed-out background to reduce visual clutter.
+- **Color Coding**: Used semantic colors to visually categorize Placements, Results, and Events.
+- **Responsiveness**: The layout is constrained to a readable maximum width for desktop but remains fully usable and responsive on mobile viewports.
 ```
