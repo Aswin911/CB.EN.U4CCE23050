@@ -1,3 +1,5 @@
+"use client";
+import axios from "axios";
 import { Log } from "../middleware/logger";
 
 export interface Notification {
@@ -13,12 +15,12 @@ interface FetchParams {
   notification_type?: string;
 }
 
-const BASE = process.env.NEXT_PUBLIC_API_BASE;
-const TOKEN = process.env.NEXT_PUBLIC_BEARER_TOKEN;
-
 export async function fetchNotifications(
   params: FetchParams = {}
 ): Promise<Notification[]> {
+  const BASE = process.env.NEXT_PUBLIC_API_BASE;
+  const TOKEN = process.env.NEXT_PUBLIC_BEARER_TOKEN;
+
   const query = new URLSearchParams();
   if (params.limit) query.set("limit", String(params.limit));
   if (params.page) query.set("page", String(params.page));
@@ -28,28 +30,19 @@ export async function fetchNotifications(
 
   const url = `${BASE}/notifications?${query.toString()}`;
 
-  await Log("info", "api", `fetching notifications from test server`);
+  await Log("info", "api", "fetching notifications from server");
 
   try {
-    const res = await fetch(url, {
+    const res = await axios.get(url, {
       headers: { Authorization: `Bearer ${TOKEN}` },
-      cache: "no-store",
     });
 
-    if (!res.ok) {
-      await Log("error", "api", `fetch failed with status ${res.status}`);
-      throw new Error(`http error: ${res.status}`);
-    }
-
-    const data = await res.json();
-    await Log(
-      "info",
-      "api",
-      `fetched ${data.notifications.length} notifications`
-    );
-    return data.notifications;
+    const notifications: Notification[] = res.data.notifications;
+    await Log("info", "api", `got ${notifications.length} notifications`);
+    return notifications;
   } catch (err) {
-    await Log("fatal", "api", `network error while fetching notifications: ${String(err)}`);
+    const msg = err instanceof Error ? err.message : String(err);
+    await Log("fatal", "api", `fetch failed: ${msg}`);
     throw err;
   }
 }

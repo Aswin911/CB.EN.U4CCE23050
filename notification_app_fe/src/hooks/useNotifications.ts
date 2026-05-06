@@ -18,18 +18,14 @@ export function useNotifications(params: Params = {}) {
     async function load() {
       setLoading(true);
       setError(null);
-      await Log(
-        "info",
-        "hook",
-        `loading notifications for requested parameters`
-      );
+      await Log("info", "hook", "loading notifications");
       try {
         const data = await fetchNotifications(params);
         setNotifications(data);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         await Log("error", "hook", `failed to load notifications: ${msg}`);
-        setError("failed to load notifications. please try again.");
+        setError("could not load notifications, check your connection and try again");
       } finally {
         setLoading(false);
       }
