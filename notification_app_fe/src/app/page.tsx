@@ -1,66 +1,80 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
+import React, { useState, useEffect } from "react";
+import Typography from "@mui/material/Typography";
+import CircularProgress from "@mui/material/CircularProgress";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Pagination from "@mui/material/Pagination";
+import NotificationCard from "../components/NotificationCard";
+import FilterBar from "../components/FilterBar";
+import { useNotifications } from "../hooks/useNotifications";
+import { Log } from "../middleware/logger";
 
-export default function Home() {
+const LIMIT = 10;
+
+export default function AllNotificationsPage() {
+  const [filter, setFilter] = useState("All");
+  const [page, setPage] = useState(1);
+
+  const { notifications, loading, error } = useNotifications({
+    limit: LIMIT,
+    page,
+    notification_type: filter === "All" ? undefined : filter,
+  });
+
+  useEffect(() => {
+    Log("info", "page", "all notifications page loaded");
+  }, []);
+
+  const handleFilterChange = (f: string) => {
+    setFilter(f);
+    setPage(1);
+  };
+
+  const handlePageChange = async (_: React.ChangeEvent<unknown>, value: number) => {
+    await Log("info", "component", `pagination moved to page ${value}`);
+    setPage(value);
+  };
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <Box>
+      <Typography variant="h5" fontWeight={700} mb={2}>
+        All Notifications
+      </Typography>
+
+      <FilterBar active={filter} onChange={handleFilterChange} />
+
+      {loading && (
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
+          <CircularProgress />
+        </Box>
+      )}
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      {!loading && !error && notifications.length === 0 && (
+        <Alert severity="info">No notifications found.</Alert>
+      )}
+
+      {!loading && !error &&
+        notifications.map((n) => (
+          <NotificationCard key={n.ID} notification={n} />
+        ))}
+
+      {!loading && !error && notifications.length > 0 && (
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+          <Pagination
+            count={10}
+            page={page}
+            onChange={handlePageChange}
+            color="primary"
+          />
+        </Box>
+      )}
+    </Box>
   );
 }
