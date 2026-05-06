@@ -1,89 +1,119 @@
+```markdown
 # Notification System Design
 
 ## Stage 1
 
 ### Overview
 
-So the problem here is pretty straightforward. The campus notification
-system gets a lot of notifications everyday and users are simply
-loosing track of whats important. Placements are critical, results
-matter, events are the least urgent. But they all show up the same way
-and thats the issue.
+Honestly the problem is pretty simple to understand. There are way too
+many notifications coming in everyday and students just cant keep up.
+A placement alert and a farewell event notification look the same on
+screen, which doesnt make sense. Something that could affect your
+career shouldnt be buried under event updates.
 
-The product manager asked us to build a Priority Inbox that always
-shows the top 'n' most important notifications first. I went with n=10
-as the default but the logic supports any value.
+So the ask was to build a Priority Inbox — basically always show the
+most important notifications at the top. I defaulted to top 10 but
+wrote the logic in a way where you can pass any number and it works.
 
-### How I approached it
+### How I thought about it
 
-I decided to score each notification using two things - its type and
-how recent it is. Both matter, but type matters more.
+Two things determine how important a notification is — what type it is
+and how recent it is. I gave more importance to the type because thats
+what actually matters. A placement notification from yesterday is still
+more important than an event happening right now.
 
-The formula I came up with:
+The scoring formula I used:
+
+```
 score = typeWeight + recencyScore
+```
 
 **Type weights:**
 
-| Type | Weight |
-|------|--------|
-| Placement | 3 |
-| Result | 2    |
-| Event | 1 |
-
-Placement gets the highest weight because from a student's perspective,
-a placement notification is always more critical than knowing about some
-event happening on campus.
+| Type      | Weight |
+|-----------|--------|
+| Placement | 3      |
+| Result    | 2      |
+| Event     | 1      |
 
 **Recency score:**
+
+```
 recencyScore = Math.max(0, 1 - ageInMs / 86400000)
+```
 
-86400000 is just 24 hours in milliseconds. So a notification thats just
-arrived gets a recency score close to 1. Something thats 24 hours old
-gets 0. Anything older than a day doesn't get recency bonus at all.
+86400000 is just 24 hours in milliseconds. A notification that just
+came in gets a recency score close to 1. Something thats a day old
+gets 0. Anything older than that also gets 0, its clamped.
 
-This means the total score for any notification falls between 0 and 4.
+So the total score any notification can get is somewhere between 0 and 4.
 
-### Why this formula works
+### Why this actually works
 
-The type weight is always a whole number (1, 2, or 3) and the recency
-score is always between 0 and 1. This is intentional.
+Since typeWeight is always 1, 2 or 3 (a whole number) and recency is
+always between 0 and 1, the type will almost always dominate. A
+Placement will beat a Result, a Result will beat an Event. Recency only
+really matters when two notifications are of the same type — in that
+case the newer one wins.
 
-It means type always dominates. A Result notification (score atleast 2)
-will always rank above an Event notification (score maximum 2) unless
-the Event is brand new and the Result is more than 24hrs old — in which
-case they're very close and recency breaks the tie.
+The only edge case is when a Placement is more than 24hrs old and a
+fresh Result comes in. The Placement score drops to exactly 3 and the
+Result can go upto 3 as well. They basically tie. But thats an
+acceptable tradeoff — a day old placement is still relevant.
 
-A Placement will always beat a Result. Thats by design because thats
-what actually matters to students.
+### Keeping top 10 efficient as new notifications come in
 
-### Handling new notifications coming in
+This was an interesting part of the question. Right now the script just
+fetches everything, scores it, sorts it and picks top 10. That works
+fine for the current scale.
 
-Since notifications keep coming in continuously, I'm not storing
-anything in a database or caching it. Every time the priority function
-runs, it fetches fresh data from the API and recomputes scores from
-scratch.
+But if notifications are streaming in continuously and we want to
+maintain top 10 without resorting everything everytime, the right
+approach is a **min-heap of size k (where k=10)**:
 
-This way the top 10 list is always up to date. A new Placement that
-just came in will immediately appear at the top because it has
-typeWeight=3 and recencyScore≈1, giving it nearly the highest possible
-score of ~4.
+- Start by inserting the first 10 scored notifications into the heap
+- The heap always keeps the lowest score at the root
+- When a new notification comes in, compute its score
+- If its higher than the current minimum in the heap, remove the min
+  and insert the new one
+- If its lower, just discard it
 
-No stale data. No manual refresh logic needed. Just re-run and you
-get the current top 10.
+This way you always have exactly the top 10 in memory. Time complexity
+drops from O(n log n) to O(n log k) which is significantly better when
+n is large and k stays small at 10.
 
-### What the output looks like
+I didnt implement this with a database since the question specifically
+said DB queries are out of scope. But this is how i'd approach it in
+a production setup with a real stream.
 
-The script fetches all notifications, scores each one, sorts them in
-descending order of score, and prints the top 10 with their rank,
-type, message, timestamp and score.
+### Files written
 
-Screenshots of the output are in the `/screenshots` folder.
+| File | Purpose |
+|------|---------|
+| `notification_app_fe/src/utils/priorityEngine.ts` | Scoring and ranking logic |
+| `notification_app_fe/src/stage1.ts` | Fetches notifications, runs priority, prints top 10 |
+| `logging_middleware/src/logger.ts` | The Log() function |
+| `logging_middleware/src/index.ts` | Exports Log() |
 
-### Implementation details
+### How to run it
 
-- Language used: TypeScript
-- Data source: GET `/evaluation-service/notifications` (live API, protected route)
-- No hardcoding of notifications
-- No database queries
-- The logic is inside `notification_app_fe/src/utils/priorityEngine.ts`
-- Logging is done via the `logging_middleware` Log() function throughout
+```bash
+# build logging middleware first
+cd logging_middleware
+npm install
+npm run build
+cd ..
+
+# install deps in fe folder
+cd notification_app_fe
+npm install axios dotenv ts-node
+
+# run the stage 1 script
+npx ts-node --skip-project --transpile-only src/stage1.ts
+```
+
+### Screenshot
+
+Output screenshot is in `screenshots/stage1_output.png`, shows all
+10 ranked notifications with their scores.
+```

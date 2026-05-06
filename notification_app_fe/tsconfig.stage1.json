@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "outDir": "./dist-stage1",
+    "rootDir": "./src"
+  },
+  "include": ["src/stage1.ts", "src/utils/priorityEngine.ts"]
+}
